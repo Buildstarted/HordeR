@@ -1,4 +1,4 @@
-﻿namespace HordeR.Server;
+﻿namespace HordeR.Server.Packets;
 
 using PacketBuilder = Func<PacketConstructorInfo, IServerBoundPacket>;
 

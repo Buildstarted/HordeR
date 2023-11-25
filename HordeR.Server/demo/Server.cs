@@ -1,6 +1,7 @@
 ﻿using demo.Packets.ClientBound;
 using demo.Packets.ServerBound;
 using HordeR.Server;
+using HordeR.Server.Packets;
 using Microsoft.AspNetCore.SignalR;
 using System.Collections.Immutable;
 using System.Numerics;
@@ -65,7 +66,7 @@ public class Server : HordeR.Server.GameServer
     private void OnChatMessagePacket(demo.Packets.ServerBound.ChatMessagePacket packet)
     {
         var player = GetPlayer(packet.Connection.ConnectionId);
-        Broadcast(new demo.Packets.ClientBound.ChatMessagePacket(player.Id, packet.Message));
+        Broadcast(new demo.Packets.ClientBound.ChatMessagePacket(player.Name, packet.Message));
     }
 
     private void OnInputPacket(InputPacket packet)
