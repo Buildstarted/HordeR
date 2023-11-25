@@ -4,19 +4,18 @@ using HordeR.Server;
 using HordeR.Server.Packets;
 using Microsoft.AspNetCore.SignalR;
 using System.Collections.Immutable;
-using System.Numerics;
 
-public class Server : HordeR.Server.GameServer
+public class Server : GameServer
 {
     private ImmutableDictionary<string, Player> players;
 
-    public Server(ILogger<Server> logger, IHubContext<HordeR.Server.GameHub> hub) : base(20, logger, hub)
+    public Server(ILogger<Server> logger, IHubContext<GameHub> hub) : base(20, logger, hub)
     {
         players = ImmutableDictionary<string, Player>.Empty;
 
         RegisterPacketHandler<InputPacket>(OnInputPacket);
         RegisterPacketHandler<JoinPacket>(OnJoinPacket);
-        RegisterPacketHandler<demo.Packets.ServerBound.ChatMessagePacket>(OnChatMessagePacket);
+        RegisterPacketHandler<ChatMessagePacket>(OnChatMessagePacket);
         RegisterPacketHandler<DisconnectionPacket>(OnDisconnectionPacket);
     }
 
@@ -63,10 +62,10 @@ public class Server : HordeR.Server.GameServer
         Broadcast(new PlayerConnectedPacket(player));
     }
 
-    private void OnChatMessagePacket(demo.Packets.ServerBound.ChatMessagePacket packet)
+    private void OnChatMessagePacket(ChatMessagePacket packet)
     {
         var player = GetPlayer(packet.Connection.ConnectionId);
-        Broadcast(new demo.Packets.ClientBound.ChatMessagePacket(player.Name, packet.Message));
+        Broadcast(new ChatMessageSendPacket(player.Name, packet.Message));
     }
 
     private void OnInputPacket(InputPacket packet)

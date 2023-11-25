@@ -290,7 +290,7 @@
 
         function login() {
             client.changeState(gameStates.play);
-            client.addPacketHandler("ChatMessagePacket", chatMessagePacket);
+            client.addPacketHandler("ChatMessageSendPacket", chatMessagePacket);
         }
 
         function chatMessagePacket(packet) {
