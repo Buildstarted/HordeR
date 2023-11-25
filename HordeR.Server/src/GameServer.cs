@@ -55,7 +55,7 @@ public abstract class GameServer
         }
     }
 
-    public void RegisterPacketHandler<T>(Action<T> handler) where T : IServerBoundPacket
+    public void AddPacketHandler<T>(Action<T> handler) where T : IServerBoundPacket
     {
         var type = T.Type;
 
@@ -69,7 +69,7 @@ public abstract class GameServer
         packetHandlers[type].Add((action, handler));
     }
 
-    public void UnregisterPacketHandler<T>(Action<T> handler) where T : IServerBoundPacket
+    public void RemovePacketHandler<T>(Action<T> handler) where T : IServerBoundPacket
     {
         var type = T.Type;
 

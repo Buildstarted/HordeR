@@ -13,10 +13,10 @@ public class Server : GameServer
     {
         players = ImmutableDictionary<string, Player>.Empty;
 
-        RegisterPacketHandler<InputPacket>(OnInputPacket);
-        RegisterPacketHandler<JoinPacket>(OnJoinPacket);
-        RegisterPacketHandler<ChatMessagePacket>(OnChatMessagePacket);
-        RegisterPacketHandler<DisconnectionPacket>(OnDisconnectionPacket);
+        AddPacketHandler<InputPacket>(OnInputPacket);
+        AddPacketHandler<JoinPacket>(OnJoinPacket);
+        AddPacketHandler<ChatMessagePacket>(OnChatMessagePacket);
+        AddPacketHandler<DisconnectionPacket>(OnDisconnectionPacket);
     }
 
     protected override void ClientConnected(Connection connection)
