@@ -139,11 +139,13 @@ public abstract class GameServer
                 case PacketType.Ping:
                     int clientTick = message["tick"].GetValue<int>();
                     connection.SetPing(worldTick - clientTick);
-                    connection.SendAsync(nameof(PacketType.Pong), new PongPacket(worldTick, clientTick));
+                    connection.Send(new PongPacket(worldTick, clientTick));
                     break;
                 case PacketType.Connect:
+                    clientPackets.Enqueue((connection, type, null));
                     break;
                 case PacketType.Disconnect:
+                    clientPackets.Enqueue((connection, type, null));
                     break;
             }
         }
@@ -155,7 +157,7 @@ public abstract class GameServer
 
     public Connection CreateConnection(string connectionId)
     {
-        var connection = new Connection(connectionId, HubContext);
+        var connection = new Connection(connectionId, this);
         connections = connections.Add(connectionId, connection);
 
         ClientConnected(connection);

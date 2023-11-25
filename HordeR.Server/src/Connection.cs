@@ -4,21 +4,26 @@ namespace HordeR.Server;
 
 public class Connection
 {
-    private readonly IHubContext<GameHub> hub;
     private short ping;
     private string connectionId;
+    private readonly GameServer server;
 
     public string ConnectionId => connectionId;
 
-    public Connection(string connectionId, IHubContext<GameHub> hub)
+    public Connection(string connectionId, GameServer server)
     {
         this.connectionId = connectionId;
-        this.hub = hub;
+        this.server = server;
     }
 
-    public void SendAsync(string method, params object[] args)
+    public void Send<T>(IEnumerable<T> packets) where T : IClientBoundPacket
     {
-        hub.Clients.Client(connectionId).SendAsync(method, args);
+        server.Send(this, packets);
+    }
+
+    public void Send<T>(params T[] packets) where T : IClientBoundPacket
+    {
+        server.Send(this, packets);
     }
 
     public void SetPing(long pingDiff)
