@@ -22,7 +22,8 @@ public class GameHub : Hub
 
     public override Task OnDisconnectedAsync(Exception? exception)
     {
-        server.RemoveConnection(Context.ConnectionId);
+        var client = server.RemoveConnection(Context.ConnectionId);
+        server.OnPacketReceived(client, (int)PacketType.Disconnect);
         return base.OnDisconnectedAsync(exception);
     }
 
