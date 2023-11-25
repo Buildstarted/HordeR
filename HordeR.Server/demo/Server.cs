@@ -3,8 +3,9 @@ using demo.Packets.ServerBound;
 using HordeR.Server;
 using Microsoft.AspNetCore.SignalR;
 using System.Collections.Immutable;
+using System.Numerics;
 
-public class Server : HordeR.Server.GameServer  
+public class Server : HordeR.Server.GameServer
 {
     private ImmutableDictionary<string, Player> players;
 
@@ -15,6 +16,7 @@ public class Server : HordeR.Server.GameServer
         RegisterPacketHandler<InputPacket>(OnInputPacket);
         RegisterPacketHandler<JoinPacket>(OnJoinPacket);
         RegisterPacketHandler<demo.Packets.ServerBound.ChatMessagePacket>(OnChatMessagePacket);
+        RegisterPacketHandler<DisconnectionPacket>(OnDisconnectionPacket);
     }
 
     protected override void ClientConnected(Connection connection)
@@ -37,11 +39,6 @@ public class Server : HordeR.Server.GameServer
         players = players.Remove(connectionId);
     }
 
-    protected override void ClientDisconnected(Connection connection)
-    {
-        RemovePlayer(connection.ConnectionId);
-    }
-
     public override void Tick()
     {
         var allplayers = players.ToList();
@@ -50,9 +47,19 @@ public class Server : HordeR.Server.GameServer
 
     private void OnJoinPacket(JoinPacket packet)
     {
-        var player = new Player(packet.Connection);
+        var player = new Player(packet.Connection, packet.Name);
+
+        //send all existing players to this client
+        player.Connection.Send(players.Select(p => new PlayerConnectedPacket(p.Value)));
+
+        //add the player to the list of players
         players = players.Add(packet.Connection.ConnectionId, player);
-        Broadcast(new PlayerConnectedPacket(player.Id, player.Color));
+
+        //send login success to the client
+        player.Connection.Send(new LoginSuccessPacket(player));
+
+        //broadcast to all other clients that this player has joined
+        Broadcast(new PlayerConnectedPacket(player));
     }
 
     private void OnChatMessagePacket(demo.Packets.ServerBound.ChatMessagePacket packet)
@@ -66,5 +73,15 @@ public class Server : HordeR.Server.GameServer
         if (!players.ContainsKey(packet.Connection.ConnectionId)) { return; }
         var player = players[packet.Connection.ConnectionId];
         player.HandleInput(packet);
+    }
+
+    private void OnDisconnectionPacket(DisconnectionPacket packet)
+    {
+        if(players.ContainsKey(packet.Connection.ConnectionId))
+        {
+            var player = players[packet.Connection.ConnectionId];
+            RemovePlayer(packet.Connection.ConnectionId);
+            Broadcast(new PlayerDisconnectedPacket(player.Id));
+        }
     }
 }

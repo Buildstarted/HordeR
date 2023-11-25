@@ -1,16 +1,17 @@
 ﻿using HordeR.Server;
 
 namespace demo.Packets.ClientBound;
-public struct PlayerConnectedPacket : IClientBoundPacket
+
+public struct LoginSuccessPacket : IClientBoundPacket
 {
-    public string Type => nameof(PlayerConnectedPacket);
+    public string Type => nameof(LoginSuccessPacket);
     public string Id { get; }
     public string Color { get; }
     public string Name { get; }
     public float X { get; }
     public float Y { get; }
 
-    public PlayerConnectedPacket(Player player)
+    public LoginSuccessPacket(Player player)
     {
         Id = player.Id;
         Color = player.Color;

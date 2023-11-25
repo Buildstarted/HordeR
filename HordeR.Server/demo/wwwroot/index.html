@@ -58,9 +58,43 @@
             <input type="text" /><button type="submit">Send</button>
         </div>
     </div>
+    <div id="loginform">
+        <input type="text" name="name" /><button type="submit">Login</button>
+    </div>
 
     <script type="module">
         import * as client from "/hordeR.client.js";
+
+        let id;
+        let name;
+
+        function entityPositionPacket(packet) {
+            if (players[packet.id] !== undefined) {
+                players[packet.id].x = packet.x;
+                players[packet.id].y = packet.y;
+            }
+        }
+
+        function playerConnectedPacket(packet) {
+            if (!players[packet.id]) {
+                players[packet.id] = {
+                    x: packet.x,
+                    y: packet.y,
+                    name: packet.name,
+                    color: `hsla(${packet.color}, 100%, 50%, 1)`
+                };
+            } else {
+                players[packet.id].x = packet.x;
+                players[packet.id].y = packet.y;
+                players[packet.id].name = packet.name;
+                players[packet.id].color = `hsla(${packet.color}, 100%, 50%, 1)`;
+            }
+        }
+
+        function playerDisconnectedPacket(packet) {
+            console.log("player disconnected");
+            delete players[packet.id];
+        }
 
         class ChatState extends client.GameState {
             constructor() {
@@ -118,36 +152,9 @@
             constructor() {
                 super();
                 this.$canvas = document.querySelector("canvas");
-                this.$ctx = this.$canvas.getContext("2d");
+                this.$context = this.$canvas.getContext("2d");
                 this.keydownbind = this.keydown.bind(this);
                 this.keyupbind = this.keyup.bind(this);
-            }
-
-            entityPositionPacket(packet) {
-                if (players[packet.id] === undefined) {
-                    players[packet.id] = {
-                        x: packet.x,
-                        y: packet.y,
-                        color: "#f00"
-                    };
-                } else {
-                    players[packet.id].x = packet.x;
-                    players[packet.id].y = packet.y;
-                }
-            }
-
-            playerConnectedPacket(packet) {
-                if (!players[packet.id]) {
-                    players[packet.id] = {
-                        x: 0,
-                        y: 0,
-                        color: `hsla(${packet.color}, 100%, 50%, 1)`
-                    };
-                } else {
-                    players[packet.id].x = 0;
-                    players[packet.id].y = 0;
-                    players[packet.id].color = `hsla(${packet.color}, 100%, 50%, 1)`;
-                }
             }
 
             keydown(e) {
@@ -172,15 +179,17 @@
             unpaused() { }
 
             enterState() {
-                client.addPacketHandler("EntityPositionPacket", this.entityPositionPacket);
-                client.addPacketHandler("PlayerConnectedPacket", this.playerConnectedPacket);
+                client.addPacketHandler("PlayerConnectedPacket", playerConnectedPacket);
+                client.addPacketHandler("PlayerDisconnectedPacket", playerDisconnectedPacket);
+                client.addPacketHandler("EntityPositionPacket", entityPositionPacket);
                 document.addEventListener("keydown", this.keydownbind);
                 document.addEventListener("keyup", this.keyupbind);
             }
 
             exitState() {
-                client.removePacketHandler("EntityPositionPacket", this.entityPositionPacket);
-                client.removePacketHandler("PlayerConnectedPacket", this.playerConnectedPacket);
+                client.removePacketHandler("PlayerConnectedPacket", playerConnectedPacket);
+                client.removePacketHandler("PlayerDisconnectedPacket", playerDisconnectedPacket);
+                client.removePacketHandler("EntityPositionPacket", entityPositionPacket);
                 document.removeEventListener("keydown", this.keydownbind);
                 document.removeEventListener("keyup", this.keyupbind);
             }
@@ -199,19 +208,89 @@
             }
 
             draw() {
-                this.$ctx.fillStyle = "#000";
-                this.$ctx.fillRect(0, 0, this.$canvas.width, this.$canvas.height);
+                const context = this.$context;
+                context.fillStyle = "#000";
+                context.fillRect(0, 0, this.$canvas.width, this.$canvas.height);
                 for (var p in players) {
                     var player = players[p];
-                    this.$ctx.fillStyle = player.color;
-                    this.$ctx.fillRect(player.x, player.y, 32, 32);
+                    context.save();
+                    context.shadowColor = player.color;
+                    context.shadowBlur = 20;
+                    context.beginPath();
+                    context.arc(player.x, player.y, 15, 0, Math.PI * 2, false);
+                    context.fillStyle = player.color;
+                    context.fill();
+                    context.restore();
+
+                    context.font = '12px sans-serif';
+                    context.textAlign = 'center';
+                    context.fillStyle = 'white';
+                    context.fillText(player.name, player.x, player.y - 20);
                 }
+            }
+        }
+
+        class LoginState extends client.GameState {
+            constructor() {
+                super();
+                this.$loginform = document.querySelector("#loginform");
+                this.$button = document.querySelector("#loginform button");
+                this.$input = document.querySelector("#loginform input");
+                this.onsubmitbind = this.onsubmit.bind(this);
+                this.loginsuccessbind = this.loginsuccess.bind(this);
+            }
+
+            loginsuccess(packet) {
+                id = packet.id;
+                name = packet.name;
+                players[id] = {
+                    x: 0,
+                    y: 0,
+                    id: packet.id,
+                    name: packet.name,
+                    color: packet.color
+                };
+                login();
+            }
+
+            onsubmit(e) {
+                if (e.code === "Enter") {
+                    const name = this.$input.value;
+                    if (name.length) {
+                        client.sendPacket({ type: 260, name: name });
+                    }
+                }
+            }
+
+            enterState() {
+                this.$loginform.style.display = "block";
+                this.$input.addEventListener("keydown", this.onsubmitbind);
+                this.$button.addEventListener("click", this.onsubmitbind);
+                client.addPacketHandler("PlayerConnectedPacket", playerConnectedPacket);
+                client.addPacketHandler("LoginSuccessPacket", this.loginsuccessbind);
+            }
+
+            exitState() {
+                this.$loginform.style.display = "none";
+                this.$input.removeEventListener("keydown", this.onsubmitbind);
+                this.$button.removeEventListener("click", this.onsubmitbind);
+                client.removePacketHandler("PlayerConnectedPacket", playerConnectedPacket);
+                client.removePacketHandler("LoginSuccessPacket", this.loginsuccessbind);
             }
         }
 
         let players = {};
 
-        let gameStates = { play: new PlayState(), chat: new ChatState() };
+        let gameStates = {
+            play: new PlayState(),
+            chat: new ChatState(),
+            login: new LoginState()
+        };
+
+        function login() {
+            client.changeState(gameStates.play);
+            client.addPacketHandler("ChatMessagePacket", chatMessagePacket);
+        }
 
         function chatMessagePacket(packet) {
             let $messages = document.querySelector("#messages");
@@ -232,10 +311,7 @@
         async function connect() {
             try {
                 await client.connect();
-                const selfId = await client.sendPacket({ type: 260 });
-
-                client.addPacketHandler("ChatMessagePacket", chatMessagePacket);
-                client.changeState(gameStates.play);
+                client.changeState(gameStates.login);
                 update();
             } catch (err) {
                 setTimeout(connect, 5000);

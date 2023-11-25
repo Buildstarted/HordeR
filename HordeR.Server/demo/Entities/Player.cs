@@ -18,11 +18,15 @@ public class Player : Entity
 {
     [JsonIgnore]
     public Connection Connection { get; }
+    public string Name { get; }
 
-    public Player(Connection connection)
+    public Player(Connection connection, string name)
     {
         Connection = connection;
         Color = Random.Shared.Next(0, 360).ToString();
+        X = Random.Shared.Next(0, 1024);
+        Y = Random.Shared.Next(0, 768);
+        Name = name;
     }
 
     public void Tick()
