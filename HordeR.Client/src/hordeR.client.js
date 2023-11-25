@@ -138,8 +138,7 @@ export function sendPacket(packet) {
 }
 
 export async function connect() {
-    const selfId = await start();
-    return selfId;
+    await start();
 }
 
 export class GameState {
