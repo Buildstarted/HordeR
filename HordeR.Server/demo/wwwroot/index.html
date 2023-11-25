@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title></title>
+    <style type="text/css">
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            margin: 0;
+            height: 100vh;
+        }
+
+        body {
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+            background: rgba(0, 0,0,1);
+            display: flex;
+            justify-content: center;
+            -webkit-align-items: inherit;
+            align-items: inherit;
+        }
+
+        canvas {
+            object-fit: contain;
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        #chatcontainer {
+            background-color: rgba(0, 0, 0, .25);
+            color: #fff;
+            padding: 1em;
+            margin: 0;
+            width: 100vw;
+        }
+
+            #chatcontainer ul {
+                list-style: none;
+                padding: 0;
+                margin: 0;
+            }
+
+        #chatbox {
+            margin-top: 1em;
+            margin-bottom: 1em;
+        }
+    </style>
+</head>
+<body>
+    <canvas width="1024" height="768"></canvas>
+    <div id="chatcontainer" style="position: absolute; bottom: 0; left: 0;">
+        <ul id="messages"></ul>
+        <div id="chatbox" style="visibility: hidden;">
+            <input type="text" /><button type="submit">Send</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import * as client from "/hordeR.client.js";
+
+        class ChatState extends client.GameState {
+            constructor() {
+                super();
+                this.$chatcontainer = document.querySelector("#chatcontainer");
+                this.$chatbox = document.querySelector("#chatbox");
+                this.$inputbox = document.querySelector("#chatcontainer input");
+                this.$submitbox = document.querySelector("#chatcontainer button");
+
+                this.onkeydownbind = this.onkeydown.bind(this);
+                this.onsubmitbind = this.onsubmit.bind(this);
+            }
+
+            onkeydown(e) {
+                if (e.code === "Enter") {
+                    this.onsubmit();
+                    client.changeState(gameStates.play);
+                } else if (e.code == "Escape") {
+                    this.$inputbox.value = "";
+                    client.changeState(gameStates.play);
+                }
+            }
+
+            onsubmit() {
+                const message = this.$inputbox.value;
+                if (message.length) {
+                    client.sendPacket({ type: 258, message: message });
+                    this.$inputbox.value = "";
+                }
+            }
+
+            enterState() {
+                this.$chatbox.style.visibility = "visible";
+                this.$submitbox.addEventListener("click", this.onsubmitbind);
+                document.addEventListener("keydown", this.onkeydownbind);
+                this.$inputbox.focus();
+            }
+
+            exitState() {
+                this.$chatbox.style.visibility = "hidden";
+                this.$submitbox.removeEventListener("click", this.onsubmitbind);
+                document.removeEventListener("keydown", this.onkeydownbind);
+            }
+        }
+
+        class PlayState extends client.GameState {
+            sequence = 0;
+            keys = {
+                up: { pressed: false },
+                left: { pressed: false },
+                down: { pressed: false },
+                right: { pressed: false },
+            }
+
+            constructor() {
+                super();
+                this.$canvas = document.querySelector("canvas");
+                this.$ctx = this.$canvas.getContext("2d");
+                this.keydownbind = this.keydown.bind(this);
+                this.keyupbind = this.keyup.bind(this);
+            }
+
+            entityPositionPacket(packet) {
+                if (players[packet.id] === undefined) {
+                    players[packet.id] = {
+                        x: packet.x,
+                        y: packet.y,
+                        color: "#f00"
+                    };
+                } else {
+                    players[packet.id].x = packet.x;
+                    players[packet.id].y = packet.y;
+                }
+            }
+
+            playerConnectedPacket(packet) {
+                if (!players[packet.id]) {
+                    players[packet.id] = {
+                        x: 0,
+                        y: 0,
+                        color: `hsla(${packet.color}, 100%, 50%, 1)`
+                    };
+                } else {
+                    players[packet.id].x = 0;
+                    players[packet.id].y = 0;
+                    players[packet.id].color = `hsla(${packet.color}, 100%, 50%, 1)`;
+                }
+            }
+
+            keydown(e) {
+                if (e.code === "KeyT") {
+                    e.preventDefault();
+                    client.changeState(gameStates.chat);
+                }
+                if (e.code === "ArrowUp" || e.code === "KeyW") this.keys.up.pressed = true;
+                if (e.code === "ArrowLeft" || e.code === "KeyA") this.keys.left.pressed = true;
+                if (e.code === "ArrowDown" || e.code === "KeyS") this.keys.down.pressed = true;
+                if (e.code === "ArrowRight" || e.code === "KeyD") this.keys.right.pressed = true;
+            }
+            keyup(e) {
+                if (e.code === "ArrowUp" || e.code === "KeyW") this.keys.up.pressed = false;
+                if (e.code === "ArrowLeft" || e.code === "KeyA") this.keys.left.pressed = false;
+                if (e.code === "ArrowDown" || e.code === "KeyS") this.keys.down.pressed = false;
+                if (e.code === "ArrowRight" || e.code === "KeyD") this.keys.right.pressed = false;
+            }
+
+            paused() { }
+
+            unpaused() { }
+
+            enterState() {
+                client.addPacketHandler("EntityPositionPacket", this.entityPositionPacket);
+                client.addPacketHandler("PlayerConnectedPacket", this.playerConnectedPacket);
+                document.addEventListener("keydown", this.keydownbind);
+                document.addEventListener("keyup", this.keyupbind);
+            }
+
+            exitState() {
+                client.removePacketHandler("EntityPositionPacket", this.entityPositionPacket);
+                client.removePacketHandler("PlayerConnectedPacket", this.playerConnectedPacket);
+                document.removeEventListener("keydown", this.keydownbind);
+                document.removeEventListener("keyup", this.keyupbind);
+            }
+
+            update() {
+            }
+
+            tick() {
+                let input = 0;
+                if (this.keys.up.pressed) input |= 0b00001;
+                if (this.keys.left.pressed) input |= 0b00010;
+                if (this.keys.down.pressed) input |= 0b00100;
+                if (this.keys.right.pressed) input |= 0b01000;
+
+                client.sendPacket({ type: 259, s: this.sequence++, i: input });
+            }
+
+            draw() {
+                this.$ctx.fillStyle = "#000";
+                this.$ctx.fillRect(0, 0, this.$canvas.width, this.$canvas.height);
+                for (var p in players) {
+                    var player = players[p];
+                    this.$ctx.fillStyle = player.color;
+                    this.$ctx.fillRect(player.x, player.y, 32, 32);
+                }
+            }
+        }
+
+        let players = {};
+
+        let gameStates = { play: new PlayState(), chat: new ChatState() };
+
+        function chatMessagePacket(packet) {
+            let $messages = document.querySelector("#messages");
+            let $li = document.createElement("li");
+            $li.innerText = `${packet.name}: ${packet.message}`;
+            $messages.appendChild($li);
+            if ($messages.childNodes.length > 10) {
+                $messages.removeChild($messages.firstChild);
+            }
+        };
+
+        function update() {
+            requestAnimationFrame(update);
+            client.update();
+            client.draw();
+        }
+
+        async function connect() {
+            try {
+                await client.connect();
+                const selfId = await client.sendPacket({ type: 260 });
+
+                client.addPacketHandler("ChatMessagePacket", chatMessagePacket);
+                client.changeState(gameStates.play);
+                update();
+            } catch (err) {
+                setTimeout(connect, 5000);
+            }
+        };
+
+        connect();
+    </script>
+</body>
+</html>

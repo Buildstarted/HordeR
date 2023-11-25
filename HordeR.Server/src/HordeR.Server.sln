@@ -3,7 +3,17 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.8.34309.116
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HordeR.Server", "HordeR.Server.csproj", "{2DA2F105-EDA8-40A3-8C2E-A4C18DC24131}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HordeR.Server", "HordeR.Server.csproj", "{2DA2F105-EDA8-40A3-8C2E-A4C18DC24131}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{8D87402A-A5DE-4A40-AE3B-19ACD2835C32}"
+	ProjectSection(SolutionItems) = preProject
+		..\..\HordeR.Client\src\hordeR.client.js = ..\..\HordeR.Client\src\hordeR.client.js
+	EndProjectSection
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "demo", "..\demo\demo.csproj", "{D7901680-594C-4A63-98F9-569D6E3EB72F}"
+	ProjectSection(ProjectDependencies) = postProject
+		{2DA2F105-EDA8-40A3-8C2E-A4C18DC24131} = {2DA2F105-EDA8-40A3-8C2E-A4C18DC24131}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +25,10 @@ Global
 		{2DA2F105-EDA8-40A3-8C2E-A4C18DC24131}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2DA2F105-EDA8-40A3-8C2E-A4C18DC24131}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2DA2F105-EDA8-40A3-8C2E-A4C18DC24131}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D7901680-594C-4A63-98F9-569D6E3EB72F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D7901680-594C-4A63-98F9-569D6E3EB72F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D7901680-594C-4A63-98F9-569D6E3EB72F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D7901680-594C-4A63-98F9-569D6E3EB72F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
