@@ -49,9 +49,15 @@ public abstract class GameServer
 
         foreach (var type in types)
         {
-            var typeid = (int)type.GetProperty("Type").GetValue(null)!;
-            var createPacket = (Func<PacketConstructorInfo, IServerBoundPacket>)type.GetProperty("CreatePacket").GetValue(null);
-            packetTypeRegister.Add(typeid, createPacket);
+            var typeid = (int?)type.GetProperty("Type")!.GetValue(null);
+            var createPacket = (Func<PacketConstructorInfo, IServerBoundPacket>?)type.GetProperty("CreatePacket")!.GetValue(null);
+            if(typeid is null || createPacket is null)
+            {
+                logger.LogError($"Failed to register packet type {type.Name}");
+                continue;
+            }
+
+            packetTypeRegister.Add(typeid.Value, createPacket);
         }
     }
 
