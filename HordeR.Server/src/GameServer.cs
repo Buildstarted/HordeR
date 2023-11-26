@@ -127,11 +127,16 @@ public abstract class GameServer
     public abstract void Tick();
 
     public virtual void Broadcast<T>(T packet) where T : IClientBoundPacket => Broadcast<T>([packet]);
+    public virtual void Broadcast<T>(IEnumerable<T> packets) where T : IClientBoundPacket => hub.Clients.All.SendAsync("packets", packets);
 
-    public virtual void Broadcast<T>(IEnumerable<T> packets) where T : IClientBoundPacket
-    {
-        hub.Clients.All.SendAsync("packets", packets);
-    }
+    public virtual void Broadcast<T>(string groupName, T packet) where T : IClientBoundPacket => Broadcast<T>(groupName, [packet]);
+    public virtual void Broadcast<T>(string groupName, IEnumerable<T> packets) where T : IClientBoundPacket => hub.Clients.Group(groupName).SendAsync("packets", packets);
+
+    public virtual void Broadcast<T>(string[] groupNames, T packet) where T : IClientBoundPacket => Broadcast<T>(groupNames, [packet]);
+    public virtual void Broadcast<T>(string[] groupNames, IEnumerable<T> packets) where T : IClientBoundPacket => hub.Clients.Groups(groupNames).SendAsync("packets", packets);
+
+    public virtual void Broadcast<T>(IReadOnlyList<Connection> connections, T packet) where T : IClientBoundPacket => Broadcast<T>(connections, [packet]);
+    public virtual void Broadcast<T>(IReadOnlyList<Connection> connections, IEnumerable<T> packets) where T : IClientBoundPacket => hub.Clients.Clients(connections.Select(c => c.ConnectionId).ToArray()).SendAsync("packets", packets);
 
     public virtual void Send<T>(Connection connection, T packet) where T : IClientBoundPacket => Send<T>(connection, [packet]);
     public virtual void Send<T>(Connection connection, IEnumerable<T> packets) where T : IClientBoundPacket => hub.Clients.Client(connection.ConnectionId).SendAsync("packets", packets);
