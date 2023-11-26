@@ -51,8 +51,13 @@ public class GameHub : Hub
         var client = server.GetConnection(Context.ConnectionId);
         if (client is not null)
         {
-            var packetType = json["type"].GetValue<int>();
-            server.OnPacketReceived(client, packetType, json);
+            var packetType = json["type"]?.GetValue<int>();
+            if (packetType is null)
+            {
+                throw new Exception("Packet type is null");
+            }
+
+            server.OnPacketReceived(client, packetType.Value, json);
         }
     }
 }
