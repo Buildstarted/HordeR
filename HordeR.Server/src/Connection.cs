@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.SignalR;
+﻿using HordeR.Server.Packets;
 
 namespace HordeR.Server;
 

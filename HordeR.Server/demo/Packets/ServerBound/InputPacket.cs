@@ -1,6 +1,6 @@
 ﻿using HordeR.Server;
-
-using PacketBuilder = System.Func<HordeR.Server.PacketConstructorInfo, HordeR.Server.IServerBoundPacket>;
+using HordeR.Server.Packets;
+using PacketBuilder = System.Func<HordeR.Server.PacketConstructorInfo, HordeR.Server.Packets.IServerBoundPacket>;
 
 public class InputPacket : IServerBoundPacket
 {

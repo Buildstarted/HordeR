@@ -1,4 +1,6 @@
-﻿namespace HordeR.Server;
+﻿using HordeR.Server.Packets;
+
+namespace HordeR.Server;
 
 public struct PongPacket : IClientBoundPacket
 {

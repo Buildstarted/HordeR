@@ -14,6 +14,11 @@ public static class WebApplicationExtensions
         app.MapHub<GameHub>(url);
 
         var server = app.Services.GetService<GameServer>();
+        if(server is null)
+        {
+            throw new Exception("You must call AddHordeRServer<T> before calling UseHordeRServer");
+        }
+
         server.Start();
     }
 }

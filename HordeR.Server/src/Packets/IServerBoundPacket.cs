@@ -1,4 +1,4 @@
-﻿namespace HordeR.Server;
+﻿namespace HordeR.Server.Packets;
 
 public interface IServerBoundPacket
 {

@@ -1,4 +1,4 @@
-﻿using HordeR.Server;
+﻿using HordeR.Server.Packets;
 
 namespace demo.Packets.ClientBound;
 public struct PlayerConnectedPacket : IClientBoundPacket
