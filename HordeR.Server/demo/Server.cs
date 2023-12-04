@@ -42,7 +42,7 @@ public class Server : GameServer
     public override void Tick()
     {
         var allplayers = players.ToList();
-        Broadcast(allplayers.Select(x => new EntityPositionPacket(x.Value.Id, x.Value.X, x.Value.Y)));
+        Broadcast(allplayers.Select(x => new EntityPositionPacket(x.Value.Id, x.Value.X, x.Value.Y, x.Value.Sequence)));
     }
 
     private void OnJoinPacket(JoinPacket packet)

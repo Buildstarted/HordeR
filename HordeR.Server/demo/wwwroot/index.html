@@ -53,6 +53,13 @@
 </head>
 <body>
     <canvas width="1024" height="768"></canvas>
+    <div id="keybindingscontainer" style="color: #fff; visibility: hidden; position: absolute; top: 0; left: 0; bottom: 0; right: 0;">
+        <h1 style="text-align: center;">Keybindings</h1>
+        <table style="margin: 0 auto; width: 20em;">
+            <tbody>
+            </tbody>
+        </table>
+    </div>
     <div id="chatcontainer" style="position: absolute; bottom: 0; left: 0;">
         <ul id="messages"></ul>
         <div id="chatbox" style="visibility: hidden;">
@@ -65,14 +72,32 @@
 
     <script type="module">
         import * as client from "/hordeR.client.js";
+        import * as input from "/hordeR.input.js";
 
         let id;
         let name;
 
         function entityPositionPacket(packet) {
-            if (players[packet.id] !== undefined) {
-                players[packet.id].x = packet.x;
-                players[packet.id].y = packet.y;
+            const player = players[packet.id];
+            if (player !== undefined) {
+                player.x = packet.x;
+                player.y = packet.y;
+
+                //if we received a self packet then we need to replay all
+                //the inputs that haven't been received by the server yet
+                if (packet.id === id) {
+                    const lastInputIndex = player.inputs.findIndex(i => i.sequence === packet.sequence);
+                    if (lastInputIndex > -1) {
+                        player.inputs.splice(0, lastInputIndex + 1);
+                    }
+
+                    player.inputs.forEach(input => {
+                        if (input.up) player.y -= 10;
+                        if (input.left) player.x -= 10;
+                        if (input.down) player.y += 10;
+                        if (input.right) player.x += 10;
+                    });
+                }
             }
         }
 
@@ -82,19 +107,105 @@
                     x: packet.x,
                     y: packet.y,
                     name: packet.name,
-                    color: `hsla(${packet.color}, 100%, 50%, 1)`
+                    color: `hsla(${packet.color}, 100%, 50%, 1)`,
+                    update: () => { }
                 };
             } else {
-                players[packet.id].x = packet.x;
-                players[packet.id].y = packet.y;
-                players[packet.id].name = packet.name;
-                players[packet.id].color = `hsla(${packet.color}, 100%, 50%, 1)`;
+                const player = players[packet.id];
+                player.x = packet.x;
+                player.y = packet.y;
+                player.name = packet.name;
+                player.color = `hsla(${packet.color}, 100%, 50%, 1)`;
             }
         }
 
         function playerDisconnectedPacket(packet) {
-            console.log("player disconnected");
             delete players[packet.id];
+        }
+
+        class KeybindingState extends client.GameState {
+            constructor() {
+                super();
+                this.$keybindingscontainer = document.querySelector("#keybindingscontainer");
+            }
+
+            tick() {
+                if (input.isKeyPressed("keybindings.close")) client.changeState(gameStates.play);
+            }
+
+            enterState() {
+                this.$keybindingscontainer.style.visibility = "visible";
+                const $tbody = this.$keybindingscontainer.querySelector("tbody");
+                $tbody.innerHTML = "";
+                this.bindings = input.bindings();
+                for (let i in this.bindings.actions) {
+                    const action = this.bindings.actions[i];
+                    const $tr = document.createElement("tr");
+
+                    const $td = document.createElement("td");
+                    $td.innerText = i;
+
+                    const $td2 = document.createElement("td");
+                    const $button = document.createElement("button");
+                    $button.innerText = action;
+                    $td2.appendChild($button);
+
+                    $tr.appendChild($td);
+                    $tr.appendChild($td2);
+                    $tbody.appendChild($tr);
+                }
+
+                const $buttons = this.$keybindingscontainer.querySelectorAll("button");
+                for (let i = 0; i < $buttons.length; i++) {
+                    const $button = $buttons[i];
+                    let mouseHandlerClick = false;
+                    $button.addEventListener("click", (e2) => {
+                        if (mouseHandlerClick) {
+                            e2.preventDefault();
+                            e2.stopPropagation();
+                            mouseHandlerClick = false;
+                            return;
+                        }
+                        const $tr = $button.parentElement.parentElement;
+                        const oldKey = $tr.children[1].innerText;
+                        const action = $tr.children[0].innerText;
+                        const $td = $tr.children[1];
+                        $button.innerText = "Press a key...";
+
+                        const onkeydown = (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const key = e.code;
+                            if (key !== "Escape") {
+                                input.changeKeyBinding(oldKey, action, key);
+                                $button.innerText = key;
+                            } else {
+                                $button.innerText = oldKey;
+                            }
+                            document.removeEventListener("keydown", onkeydown);
+                            document.removeEventListener("mousedown", onmousedown);
+                        };
+
+                        const onmousedown = (e) => {
+                            mouseHandlerClick = true;
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const key = input.getButtonCode(e.button);
+                            input.changeKeyBinding(oldKey, action, key);
+                            $button.innerText = key;
+                            document.removeEventListener("keydown", onkeydown);
+                            document.removeEventListener("mousedown", onmousedown);
+                        };
+
+                        document.addEventListener("keydown", onkeydown);
+                        document.addEventListener("mousedown", onmousedown);
+                    });
+                }
+            }
+
+            exitState() {
+                this.$keybindingscontainer.style.visibility = "hidden";
+            }
         }
 
         class ChatState extends client.GameState {
@@ -105,16 +216,15 @@
                 this.$inputbox = document.querySelector("#chatcontainer input");
                 this.$submitbox = document.querySelector("#chatcontainer button");
 
-                this.onkeydownbind = this.onkeydown.bind(this);
                 this.onsubmitbind = this.onsubmit.bind(this);
             }
 
-            onkeydown(e) {
-                if (e.code === "Enter") {
+            tick() {
+                if (input.isKeyPressed("chat.submit")) {
                     this.onsubmit();
                     client.changeState(gameStates.play);
-                } else if (e.code == "Escape") {
-                    this.$inputbox.value = "";
+                }
+                if (input.isKeyPressed("chat.cancel")) {
                     client.changeState(gameStates.play);
                 }
             }
@@ -123,21 +233,19 @@
                 const message = this.$inputbox.value;
                 if (message.length) {
                     client.sendPacket({ type: 258, message: message });
-                    this.$inputbox.value = "";
                 }
             }
 
             enterState() {
                 this.$chatbox.style.visibility = "visible";
                 this.$submitbox.addEventListener("click", this.onsubmitbind);
-                document.addEventListener("keydown", this.onkeydownbind);
                 this.$inputbox.focus();
             }
 
             exitState() {
                 this.$chatbox.style.visibility = "hidden";
                 this.$submitbox.removeEventListener("click", this.onsubmitbind);
-                document.removeEventListener("keydown", this.onkeydownbind);
+                this.$inputbox.value = "";
             }
         }
 
@@ -154,25 +262,6 @@
                 super();
                 this.$canvas = document.querySelector("canvas");
                 this.$context = this.$canvas.getContext("2d");
-                this.keydownbind = this.keydown.bind(this);
-                this.keyupbind = this.keyup.bind(this);
-            }
-
-            keydown(e) {
-                if (e.code === "KeyT") {
-                    e.preventDefault();
-                    client.changeState(gameStates.chat);
-                }
-                if (e.code === "ArrowUp" || e.code === "KeyW") this.keys.up.pressed = true;
-                if (e.code === "ArrowLeft" || e.code === "KeyA") this.keys.left.pressed = true;
-                if (e.code === "ArrowDown" || e.code === "KeyS") this.keys.down.pressed = true;
-                if (e.code === "ArrowRight" || e.code === "KeyD") this.keys.right.pressed = true;
-            }
-            keyup(e) {
-                if (e.code === "ArrowUp" || e.code === "KeyW") this.keys.up.pressed = false;
-                if (e.code === "ArrowLeft" || e.code === "KeyA") this.keys.left.pressed = false;
-                if (e.code === "ArrowDown" || e.code === "KeyS") this.keys.down.pressed = false;
-                if (e.code === "ArrowRight" || e.code === "KeyD") this.keys.right.pressed = false;
             }
 
             paused() { }
@@ -183,29 +272,40 @@
                 client.addPacketHandler("PlayerConnectedPacket", playerConnectedPacket);
                 client.addPacketHandler("PlayerDisconnectedPacket", playerDisconnectedPacket);
                 client.addPacketHandler("EntityPositionPacket", entityPositionPacket);
-                document.addEventListener("keydown", this.keydownbind);
-                document.addEventListener("keyup", this.keyupbind);
             }
 
             exitState() {
                 client.removePacketHandler("PlayerConnectedPacket", playerConnectedPacket);
                 client.removePacketHandler("PlayerDisconnectedPacket", playerDisconnectedPacket);
                 client.removePacketHandler("EntityPositionPacket", entityPositionPacket);
-                document.removeEventListener("keydown", this.keydownbind);
-                document.removeEventListener("keyup", this.keyupbind);
             }
 
             update() {
+                for (var p in players) {
+                    var player = players[p];
+                    player.update();
+                }
             }
 
             tick() {
-                let input = 0;
-                if (this.keys.up.pressed) input |= 0b00001;
-                if (this.keys.left.pressed) input |= 0b00010;
-                if (this.keys.down.pressed) input |= 0b00100;
-                if (this.keys.right.pressed) input |= 0b01000;
+                let keyInput = 0;
+                this.sequence++;
+                const self = players[id];
 
-                client.sendPacket({ type: 259, s: this.sequence++, i: input });
+                const up = input.isKeyPressed("movement.up");
+                const left = input.isKeyPressed("movement.left");
+                const down = input.isKeyPressed("movement.down");
+                const right = input.isKeyPressed("movement.right");
+
+                if (up) { keyInput |= 0b00001; self.y -= 10; }
+                if (down) { keyInput |= 0b00100; self.y += 10; }
+                if (left) { keyInput |= 0b00010; self.x -= 10; }
+                if (right) { keyInput |= 0b01000; self.x += 10; }
+                if (input.isKeyPressed("chat.open")) client.changeState(gameStates.chat);
+                if (input.isKeyPressed("keybindings.open")) client.changeState(gameStates.keybindings);
+
+                self.inputs.push({ up, down, left, right, sequence: this.sequence });
+                client.sendPacket({ type: 259, s: this.sequence, i: keyInput });
             }
 
             draw() {
@@ -242,6 +342,7 @@
             }
 
             loginsuccess(packet) {
+                console.log("login success");
                 id = packet.id;
                 name = packet.name;
                 players[id] = {
@@ -249,7 +350,9 @@
                     y: 0,
                     id: packet.id,
                     name: packet.name,
-                    color: packet.color
+                    color: packet.color,
+                    inputs: [],
+                    update: () => { }
                 };
                 login();
             }
@@ -285,7 +388,8 @@
         let gameStates = {
             play: new PlayState(),
             chat: new ChatState(),
-            login: new LoginState()
+            login: new LoginState(),
+            keybindings: new KeybindingState()
         };
 
         function login() {
@@ -313,6 +417,21 @@
             try {
                 await client.connect();
                 client.changeState(gameStates.login);
+                input.startMonitoringKeyboard();
+
+                input.addKeyBinding("KeyW", "movement.up");
+                input.addKeyBinding("KeyS", "movement.down");
+                input.addKeyBinding("KeyA", "movement.left");
+                input.addKeyBinding("KeyD", "movement.right");
+                input.addKeyBinding("KeyT", "chat.open");
+                input.addKeyBinding("Slash", "chat.open.start-command");
+
+                //these should probably not be keybindings but i'm not sure
+                input.addKeyBinding("Enter", "chat.submit");
+                input.addKeyBinding("Escape", "chat.cancel");
+                input.addKeyBinding("Tab", "keybindings.open");
+                input.addKeyBinding("Escape", "keybindings.close");
+
                 update();
             } catch (err) {
                 setTimeout(connect, 5000);

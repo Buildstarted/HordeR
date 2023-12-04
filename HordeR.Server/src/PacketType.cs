@@ -6,4 +6,5 @@ public enum PacketType
     Pong,
     Connect,
     Disconnect,
+    Tick,
 }

@@ -19,6 +19,7 @@ public class Player : Entity
     [JsonIgnore]
     public Connection Connection { get; }
     public string Name { get; }
+    public int Sequence { get; private set; }
 
     public Player(Connection connection, string name)
     {
@@ -36,6 +37,8 @@ public class Player : Entity
 
     internal void HandleInput(InputPacket packet)
     {
+        Sequence = packet.Sequence;
+
         if(packet.Up)
         {
             Y -= 10;
